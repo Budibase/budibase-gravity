@@ -26,6 +26,12 @@ jobs:
           MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
         run: |
           set -euo pipefail
+          upstream_sha=$(gh api repos/Budibase/budibase/git/ref/heads/master --jq .object.sha)
+          mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
+          if [[ "$mirror_sha" = "$upstream_sha" ]]; then
+            printf 'Master already mirrors upstream commit `%s`.\n' "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           work_dir=$(mktemp -d "$RUNNER_TEMP/mirror.XXXXXX")
           trap 'rm -rf "$work_dir"' EXIT
           umask 077
