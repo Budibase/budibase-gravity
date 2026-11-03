@@ -1,0 +1,17 @@
+# budibase-gravity
+
+This repository is a fork and automatic mirror of [Budibase/budibase](https://github.com/Budibase/budibase).
+
+The [`master`](https://github.com/Budibase/budibase-gravity/tree/master) branch mirrors upstream `master` exactly, including its commit history. Only this upstream branch is synchronized; tags and other upstream branches are not synchronized. Changes made directly to this fork's `master` will be overwritten on the next sync, including divergent commits and upstream force updates.
+
+The default branch, `mirror-sync`, contains only mirror administration. Keeping the scheduler here allows `master` to remain an exact mirror. GitHub requires scheduled workflows to exist on the default branch.
+
+The [Mirror upstream master](https://github.com/Budibase/budibase-gravity/actions/workflows/sync-master.yml) workflow checks upstream every five minutes and can also be run manually. GitHub Actions schedules are best effort and may be delayed. The workflow uses the repository-scoped `GITHUB_TOKEN` with `contents: write`; no personal token or external service is required.
+
+The workflow records a daily health check on `mirror-sync` to prevent GitHub's automatic disabling of scheduled workflows after 60 days without repository activity. Workflow failures are visible in the Actions tab.
+
+Do not change the default branch to `master`: that would stop this scheduler. To clone the mirrored code, select the branch explicitly:
+
+```sh
+gh repo clone Budibase/budibase-gravity -- --branch master --single-branch
+```
