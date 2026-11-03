@@ -22,16 +22,22 @@ jobs:
     steps:
       - name: Mirror only master and verify the commit
         shell: bash
+        env:
+          MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
         run: |
           set -euo pipefail
-          upstream_sha=$(gh api repos/Budibase/budibase/git/ref/heads/master --jq .object.sha)
+          work_dir=$(mktemp -d "$RUNNER_TEMP/mirror.XXXXXX")
+          trap 'rm -rf "$work_dir"' EXIT
+          umask 077
+          printf '%s\n' "$MIRROR_SSH_KEY" > "$work_dir/key"
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$work_dir/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $work_dir/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$work_dir/known_hosts"
+          git init --bare "$work_dir/repo.git"
+          cd "$work_dir/repo.git"
+          git fetch --no-tags --depth=1 https://github.com/Budibase/budibase.git refs/heads/master
+          upstream_sha=$(git rev-parse FETCH_HEAD)
+          git push --force "git@github.com:$TARGET_REPO.git" "$upstream_sha:refs/heads/master"
           mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
-          # Set the branch directly to preserve the exact upstream history.
-          if [[ "$mirror_sha" != "$upstream_sha" ]]; then
-            gh api --method PATCH "repos/$TARGET_REPO/git/refs/heads/master" \
-              -f sha="$upstream_sha" -F force=true --silent
-            mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
-          fi
           test "$mirror_sha" = "$upstream_sha"
           printf 'Master mirrors upstream commit `%s`.\n' "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
 
