@@ -24,10 +24,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh repo sync "$TARGET_REPO" --source Budibase/budibase --branch master --force
           upstream_sha=$(gh api repos/Budibase/budibase/git/ref/heads/master --jq .object.sha)
           mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
-          # If upstream moved during the sync, repeat once using the captured SHA.
+          # Set the branch directly to preserve the exact upstream history.
           if [[ "$mirror_sha" != "$upstream_sha" ]]; then
             gh api --method PATCH "repos/$TARGET_REPO/git/refs/heads/master" \
               -f sha="$upstream_sha" -F force=true --silent
