@@ -2,7 +2,7 @@ name: Mirror upstream master
 
 on:
   schedule:
-    - cron: '2-57/5 * * * *'
+    - cron: '2 0 * * *'
   workflow_dispatch:
 
 permissions:

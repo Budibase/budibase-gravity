@@ -6,7 +6,7 @@ The [`master`](https://github.com/Budibase/budibase-gravity/tree/master) branch 
 
 The default branch, `mirror-sync`, contains only synchronization administration. GitHub requires scheduled workflows to exist on the default branch.
 
-The [Mirror upstream master](https://github.com/Budibase/budibase-gravity/actions/workflows/sync-master.yml) workflow checks upstream every five minutes and can also be run manually. GitHub Actions schedules are best effort and may be delayed. The workflow uses a repository-scoped write-enabled SSH deploy key, stored as the `MIRROR_SSH_KEY` Actions secret, to sync commits including workflow changes. GitHub’s built-in Actions token cannot update workflow files. The built-in `GITHUB_TOKEN` with `contents: write` reads the mirrored ref and writes the daily health check. No personal token or external service is required. GitHub’s SSH host key is pinned in the workflow.
+The [Mirror upstream master](https://github.com/Budibase/budibase-gravity/actions/workflows/sync-master.yml) workflow checks upstream daily at 00:02 UTC and can also be run manually. GitHub Actions schedules are best effort and may be delayed. The workflow uses a repository-scoped write-enabled SSH deploy key, stored as the `MIRROR_SSH_KEY` Actions secret, to sync commits including workflow changes. GitHub’s built-in Actions token cannot update workflow files. The built-in `GITHUB_TOKEN` with `contents: write` reads the mirrored ref and writes the daily health check. No personal token or external service is required. GitHub’s SSH host key is pinned in the workflow.
 
 Inherited push workflows for CI, QA deployment, automerge, and cloud branch syncing are disabled in this fork. Review any new upstream workflow triggers when upstream adds workflows.
 
