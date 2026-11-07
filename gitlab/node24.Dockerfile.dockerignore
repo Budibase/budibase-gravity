@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/dist
+**/.env*
+.nx
+.agents
+.codex
+.aws
+**/coverage
+gitlab/image-metadata
+gitlab/local/.state
+packages/server/builder
+packages/server/client
