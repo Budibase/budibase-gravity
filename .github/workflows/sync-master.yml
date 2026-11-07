@@ -20,7 +20,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TARGET_REPO: ${{ github.repository }}
     steps:
-      - name: Mirror only master and verify the commit
+      - name: Merge upstream master and verify both histories
         shell: bash
         env:
           MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
@@ -29,7 +29,7 @@ jobs:
           upstream_sha=$(gh api repos/Budibase/budibase/git/ref/heads/master --jq .object.sha)
           mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
           if [[ "$mirror_sha" = "$upstream_sha" ]]; then
-            printf 'Master already mirrors upstream commit `%s`.\n' "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
+            printf 'Master already contains upstream commit `%s`.\n' "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           work_dir=$(mktemp -d "$RUNNER_TEMP/mirror.XXXXXX")
@@ -38,14 +38,32 @@ jobs:
           printf '%s\n' "$MIRROR_SSH_KEY" > "$work_dir/key"
           printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$work_dir/known_hosts"
           export GIT_SSH_COMMAND="ssh -i $work_dir/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$work_dir/known_hosts"
-          git init --bare "$work_dir/repo.git"
-          cd "$work_dir/repo.git"
-          git fetch --no-tags --depth=1 https://github.com/Budibase/budibase.git refs/heads/master
-          upstream_sha=$(git rev-parse FETCH_HEAD)
-          git push --force "git@github.com:$TARGET_REPO.git" "$upstream_sha:refs/heads/master"
-          mirror_sha=$(gh api "repos/$TARGET_REPO/git/ref/heads/master" --jq .object.sha)
-          test "$mirror_sha" = "$upstream_sha"
-          printf 'Master mirrors upstream commit `%s`.\n' "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
+          git init "$work_dir/repo"
+          cd "$work_dir/repo"
+          git remote add origin "git@github.com:$TARGET_REPO.git"
+          git remote add upstream https://github.com/Budibase/budibase.git
+          git fetch --no-tags origin refs/heads/master:refs/remotes/origin/master
+          git fetch --no-tags upstream refs/heads/master:refs/remotes/upstream/master
+          mirror_sha=$(git rev-parse refs/remotes/origin/master)
+          upstream_sha=$(git rev-parse refs/remotes/upstream/master)
+          if git merge-base --is-ancestor "$upstream_sha" "$mirror_sha"; then
+            printf 'Master already contains upstream commit `%s`; fork commits are preserved.\n' "$upstream_sha" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git checkout -b sync-master "$mirror_sha"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git merge --no-edit "$upstream_sha"; then
+            echo '::error::Upstream master could not be merged. Resolve the conflict manually; Gravity master has not been changed.'
+            exit 1
+          fi
+          git merge-base --is-ancestor "$mirror_sha" HEAD
+          git merge-base --is-ancestor "$upstream_sha" HEAD
+          git push origin HEAD:refs/heads/master
+          git fetch --no-tags origin refs/heads/master:refs/remotes/origin/master
+          git merge-base --is-ancestor "$mirror_sha" refs/remotes/origin/master
+          git merge-base --is-ancestor "$upstream_sha" refs/remotes/origin/master
+          printf 'Master contains upstream commit `%s` and preserves Gravity history through `%s`.\n' "$upstream_sha" "$mirror_sha" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record daily health check to keep the schedule active
         shell: bash
